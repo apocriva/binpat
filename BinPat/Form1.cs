@@ -88,19 +88,25 @@ namespace BinPat
 				byte b = patternData[curByte];
 				for(int i = 0; i < 8; i++)
 				{
-					sb.Append(b & 0x01);
+					sb.Append((b >> (7 - i)) & 0x01);
 					sb.Append(',');
-					b >>= 1;
 				}
 				sb.Append("-,");
 				if(patternData[curByte] >= 0x20 && patternData[curByte] <= 0x7D)
 				{
-					sb.Append((char)patternData[curByte]);
+					if(patternData[curByte] == 0x2C)
+					{
+						sb.Append("(comma)");
+					}
+					else
+					{
+						sb.Append((char)patternData[curByte]);
+					}
 					sb.Append(',');
 				}
 				else
 				{
-					sb.Append(".,");
+					sb.Append(",");
 				}
 				sb.AppendFormat("0x{0:X4}", curRow);
 				curByte++;
