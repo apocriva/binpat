@@ -5,6 +5,11 @@ namespace BinPat
 {
 	public partial class Form1 : Form
 	{
+		private const int BytesPerRow = 1;
+		private const int BlockLength = 8;
+		private const int BlockOffset = 2;
+		private const bool SkipByte = true;
+
 		public Form1()
 		{
 			InitializeComponent();
@@ -12,12 +17,6 @@ namespace BinPat
 
 		private void btnLoad_Click(object sender, EventArgs e)
 		{
-			int bytesPerRow = int.Parse(textBoxBytesPerRow.Text);
-			if(bytesPerRow < 1)
-			{
-				bytesPerRow = 1;
-			}
-
 			if(openFileDialog.ShowDialog(this) != DialogResult.OK)
 			{
 				textBoxFilename.Text = string.Empty;
@@ -30,43 +29,63 @@ namespace BinPat
 			try
 			{
 				StringBuilder sb = new StringBuilder();
-				byte[] rowBytes = new byte[bytesPerRow];
+				byte[] rowBytes = new byte[BytesPerRow];
 				using(BinaryReader reader = new BinaryReader(File.Open(openFileDialog.FileName, FileMode.Open)))
 				{
+					int curRow = -BlockOffset;
 					int curRowByte = 0;
 					while(reader.BaseStream.Position != reader.BaseStream.Length)
 					{
 						byte b = reader.ReadByte();
-						rowBytes[curRowByte] = b;
-						if(ShouldIncludeByte(curRowByte))
+						if(SkipByte)
 						{
-							for(int i = 0; i < 8; i++)
-							{
-								int bit = b & 0x01;
-								b >>= 1;
-								sb.Append(bit);
-								sb.Append(',');
-							}
+							b = reader.ReadByte();
+						}
+						rowBytes[curRowByte] = b;
+
+						for(int i = 0; i < 8; i++)
+						{
+							int bit = b & 0x01;
+							b >>= 1;
+							sb.Append(bit);
+							sb.Append(',');
 						}
 
 						curRowByte++;
-						if(curRowByte == bytesPerRow)
+						if(curRowByte == BytesPerRow)
 						{
-							for(int i = 0; i < bytesPerRow; i++)
+							for(int i = 0; i < BytesPerRow; i++)
 							{
 								char byteChar = '.';
 								if(rowBytes[i] >= 32 && rowBytes[i] <= 127)
 								{
 									byteChar = (char)rowBytes[i];
 								}
-								if(ShouldIncludeByte(i))
-								{
-									sb.Append(byteChar);
-									sb.Append(',');
-								}
+								sb.Append(byteChar);
+								sb.Append(',');
 							}
 							sb.Append(Environment.NewLine);
 							curRowByte = 0;
+
+							curRow++;
+							if(BlockLength > 0 && curRow > 0)
+							{
+								if(curRow % BlockLength == 0)
+								{
+									for(int i = 0; i < BytesPerRow; i++)
+									{
+										for(int j = 0; j < 8; j++)
+										{
+											sb.Append("-,");
+										}
+									}
+									for(int i = 0; i < BytesPerRow; i++)
+									{
+										sb.Append("-,");
+									}
+									sb.Append(Environment.NewLine);
+								}
+							}
 						}
 					}
 				}
@@ -77,11 +96,6 @@ namespace BinPat
 			{
 				Console.WriteLine(ex.Message);
 			}
-		}
-
-		private bool ShouldIncludeByte(int curRowByte)
-		{
-			return curRowByte != 0;
 		}
 	}
 }
